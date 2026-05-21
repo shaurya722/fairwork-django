@@ -1,0 +1,122 @@
+[
+  {
+    "category": "Penalty Rates",
+    "message": "What are Sunday penalty rates?"
+  },
+  {
+    "category": "Penalty Rates",
+    "message": "How much extra do I get paid for working Saturday?"
+  },
+  {
+    "category": "Penalty Rates",
+    "message": "Explain public holiday penalty rates for casual employees"
+  },
+  {
+    "category": "Overtime",
+    "message": "How does overtime work for casuals?"
+  },
+  {
+    "category": "Overtime",
+    "message": "What is the overtime rate after 8 hours?"
+  },
+  {
+    "category": "Overtime",
+    "message": "Clause 28 overtime rates explained"
+  },
+  {
+    "category": "Leave",
+    "message": "How much annual leave do I get?"
+  },
+  {
+    "category": "Leave",
+    "message": "Can I cash out my annual leave?"
+  },
+  {
+    "category": "Leave",
+    "message": "Personal carer's leave entitlements for part-time workers"
+  },
+  {
+    "category": "Leave",
+    "message": "How does compassionate leave work?"
+  },
+  {
+    "category": "Shift Work",
+    "message": "What are the shift allowances for night work?"
+  },
+  {
+    "category": "Shift Work",
+    "message": "Explain broken shift allowance"
+  },
+  {
+    "category": "Wages",
+    "message": "What is the minimum wage for a level 3 employee?"
+  },
+  {
+    "category": "Wages",
+    "message": "Current pay rates for disability support workers"
+  },
+  {
+    "category": "Wages",
+    "message": "How is salary progression calculated?"
+  },
+  {
+    "category": "Roster & Hours",
+    "message": "What is the minimum shift engagement?"
+  },
+  {
+    "category": "Roster & Hours",
+    "message": "How much notice must I get for roster changes?"
+  },
+  {
+    "category": "Roster & Hours",
+    "message": "Maximum ordinary hours per week for full-time"
+  },
+  {
+    "category": "Breaks",
+    "message": "How long is the meal break for an 8 hour shift?"
+  },
+  {
+    "category": "Breaks",
+    "message": "Do I get a tea break? How many?"
+  },
+  {
+    "category": "Classification",
+    "message": "What is the difference between level 2 and level 3?"
+  },
+  {
+    "category": "Classification",
+    "message": "Duties and responsibilities of a team leader"
+  },
+  {
+    "category": "Termination",
+    "message": "How much notice does an employer need to give?"
+  },
+  {
+    "category": "Termination",
+    "message": "Redundancy pay for 5 years of service"
+  },
+  {
+    "category": "Superannuation",
+    "message": "Superannuation contributions under the award"
+  },
+  {
+    "category": "Training",
+    "message": "Paid training time requirements"
+  },
+  {
+    "category": "Travel",
+    "message": "Do I get paid for travel time between clients?"
+  },
+  {
+    "category": "On-Call",
+    "message": "On-call and standby allowance rates"
+  },
+  {
+    "category": "Allowances",
+    "message": "What allowances are available for laundry and uniform?"
+  },
+  {
+    "category": "Allowances",
+    "message": "Vehicle allowance when using my own car for work"
+  }
+]

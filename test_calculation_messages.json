@@ -1,0 +1,107 @@
+[
+  {
+    "category": "Calc — Full Info Single Message",
+    "message": "I worked 9pm to 6am as a casual at $35.67 per hour. How much pay?"
+  },
+  {
+    "category": "Calc — Full Info Single Message",
+    "message": "I am a permanent employee on $28.50/hr. I worked Monday 8am to 4pm and Tuesday 8am to 6pm. Calculate my pay."
+  },
+  {
+    "category": "Calc — Full Info Single Message",
+    "message": "Casual worker, $32/hr, worked Saturday 7am to 3pm and Sunday 7am to 3pm. What's my total pay?"
+  },
+  {
+    "category": "Calc — Full Info Single Message",
+    "message": "I did a sleepover shift from 4pm Friday to 8am Saturday at $30/hr as permanent. How much do I get?"
+  },
+  {
+    "category": "Calc — Full Info Single Message",
+    "message": "Calculate pay for a casual at $40/hr who worked Christmas Day 6am to 2pm with a 30km travel."
+  },
+
+  {
+    "category": "Calc — Missing Info",
+    "message": "How much will I earn if I work 10 hours?"
+  },
+  {
+    "category": "Calc — Missing Info",
+    "message": "I worked from 8am to 5pm yesterday. Calculate my pay."
+  },
+  {
+    "category": "Calc — Missing Info",
+    "message": "What would my payslip look like for a 12-hour night shift?"
+  },
+
+  {
+    "category": "Calc — Memory Turn 1",
+    "message": "I am a casual employee earning $35.67 per hour."
+  },
+  {
+    "category": "Calc — Memory Turn 2 (follow-up)",
+    "message": "I worked 9pm to 6am last night. How much pay?"
+  },
+  {
+    "category": "Calc — Memory Turn 3 (follow-up)",
+    "message": "What if I worked the same shift on a Saturday?"
+  },
+  {
+    "category": "Calc — Memory Turn 4 (follow-up)",
+    "message": "Add a 20km travel allowance to that."
+  },
+
+  {
+    "category": "Calc — Memory Alternate Turn 1",
+    "message": "My base rate is $28.50 and I am permanent full-time."
+  },
+  {
+    "category": "Calc — Memory Alternate Turn 2",
+    "message": "I worked Monday 9am to 5pm and Tuesday 9am to 7pm."
+  },
+  {
+    "category": "Calc — Memory Alternate Turn 3",
+    "message": "Now calculate it if I was casual instead."
+  },
+
+  {
+    "category": "Calc — Edge Cases",
+    "message": "Casual $35.67/hr worked 10pm Friday to 7am Saturday. How much?"
+  },
+  {
+    "category": "Calc — Edge Cases",
+    "message": "Permanent $30/hr worked 6am to 8pm Monday with no break. Calculate pay with meal allowance."
+  },
+  {
+    "category": "Calc — Edge Cases",
+    "message": "Casual $35/hr worked two shifts: Monday 8am–12pm and Monday 1pm–5pm. Broken shift pay?"
+  },
+  {
+    "category": "Calc — Edge Cases",
+    "message": "Permanent $28/hr worked 38 hours Mon–Fri then 4 hours Saturday. Weekly overtime?"
+  },
+  {
+    "category": "Calc — Edge Cases",
+    "message": "Casual $32/hr, sleepover 6pm to 8am next day, with one disturbance at 2am. Total pay?"
+  },
+
+  {
+    "category": "RAG + Calc Mixed Conversation",
+    "message": "What is the Saturday penalty rate for casuals?"
+  },
+  {
+    "category": "RAG + Calc Mixed Conversation",
+    "message": "I am a casual at $32/hr. If I work Saturday 8am to 4pm, how much do I get?"
+  },
+  {
+    "category": "RAG + Calc Mixed Conversation",
+    "message": "And what about Sunday at the same hours?"
+  },
+  {
+    "category": "RAG + Calc Mixed Conversation",
+    "message": "What is the minimum engagement period for a shift?"
+  },
+  {
+    "category": "RAG + Calc Mixed Conversation",
+    "message": "I worked 1 hour as a casual at $30/hr. Do I still get 2 hours minimum pay?"
+  }
+]

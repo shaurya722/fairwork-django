@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fair Work Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e10;
+      --surface: #18181c;
+      --surface2: #222228;
+      --border: #2e2e38;
+      --accent: #e8c76d;
+      --accent2: #c9a94a;
+      --text: #f0ede8;
+      --muted: #8a8797;
+      --user-bubble: #1e2d42;
+      --bot-bubble: #1c1c22;
+      --source-bg: #131317;
+      --radius: 16px;
+      --shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 38px; height: 38px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.25rem;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    header span {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 400;
+      margin-left: 4px;
+    }
+
+    .status-dot {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 7px;
+      font-size: 0.75rem; color: var(--muted);
+    }
+    .status-dot::before {
+      content: '';
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 6px #4ade8088;
+    }
+
+    /* ── Messages ── */
+    #chat-window {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scroll-behavior: smooth;
+    }
+
+    #chat-window::-webkit-scrollbar { width: 4px; }
+    #chat-window::-webkit-scrollbar-track { background: transparent; }
+    #chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .msg-row {
+      display: flex;
+      padding: 0 24px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-row.user { justify-content: flex-end; }
+    .msg-row.bot  { justify-content: flex-start; align-items: flex-start; gap: 12px; }
+
+    .avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .bubble {
+      max-width: 72%;
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      line-height: 1.65;
+      position: relative;
+    }
+
+    .bubble.user {
+      background: var(--user-bubble);
+      border: 1px solid #2a3d55;
+      border-bottom-right-radius: 4px;
+      color: #dce9f7;
+    }
+
+    .bubble.bot {
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    /* ── Sources ── */
+    .sources {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .sources-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .source-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      background: var(--source-bg);
+      border: 1px solid var(--border);
+      font-size: 0.72rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      text-decoration: none;
+    }
+
+    .chip:hover {
+      border-color: var(--accent2);
+      color: var(--accent);
+    }
+
+    .chip-num {
+      width: 16px; height: 16px;
+      background: var(--accent);
+      color: #0e0e10;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.62rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ── Meta info ── */
+    .meta-row {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .meta-row span {
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    /* ── Typing indicator ── */
+    .typing-bubble {
+      display: flex; align-items: center; gap: 5px;
+      padding: 14px 18px;
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-bottom-left-radius: 4px;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: bounce 1.2s infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* ── Welcome ── */
+    .welcome {
+      text-align: center;
+      padding: 48px 24px;
+      animation: fadeUp 0.5s ease;
+    }
+
+    .welcome-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .welcome h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+    }
+
+    .welcome p {
+      color: var(--muted);
+      font-size: 0.88rem;
+      max-width: 420px;
+      margin: 0 auto 28px;
+      line-height: 1.6;
+    }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      justify-content: center;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .suggestion-btn {
+      padding: 9px 15px;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      background: var(--surface2);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .suggestion-btn:hover {
+      border-color: var(--accent2);
+      background: #222228;
+    }
+
+    /* ── Input area ── */
+    .input-area {
+      flex-shrink: 0;
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .input-wrap {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      transition: border-color 0.2s;
+    }
+
+    .input-wrap:focus-within {
+      border-color: var(--accent2);
+    }
+
+    #msg-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      resize: none;
+      max-height: 140px;
+      line-height: 1.5;
+      padding: 2px 0;
+    }
+
+    #msg-input::placeholder { color: var(--muted); }
+
+    #send-btn {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    #send-btn:hover { background: var(--accent2); }
+    #send-btn:active { transform: scale(0.93); }
+    #send-btn:disabled { opacity: 0.4; cursor: default; }
+
+    #send-btn svg { width: 16px; height: 16px; fill: #0e0e10; }
+
+    .input-hint {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    /* ── Error ── */
+    .error-bubble {
+      background: #2a1a1a;
+      border-color: #4a2828;
+      color: #f87171;
+    }
+
+    /* ── New chat button ── */
+    #new-chat-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.72rem;
+      padding: 7px 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    #new-chat-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0e0e10;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚖️</div>
+  <div>
+    <h1>Symcare - Fair Work Assistant <span>MA000100</span></h1>
+  </div>
+  <div class="status-dot">Connected</div>
+  <button id="new-chat-btn" onclick="newChat()" title="Start a new conversation">+ New chat</button>
+</header>
+
+<div id="chat-window">
+  <div class="welcome" id="welcome">
+    <div class="welcome-icon">⚖️</div>
+    <h2>Fair Work Q&A</h2>
+    <p>Ask anything about the SCHADS Award — penalty rates, overtime, leave entitlements, and more.</p>
+    <div class="suggestions">
+      <button class="suggestion-btn" onclick="sendSuggestion(this)">What are Sunday penalty rates?</button>
+      <button class="suggestion-btn" onclick="sendSuggestion(this)">How does overtime work for casuals?</button>
+      <button class="suggestion-btn" onclick="sendSuggestion(this)">What is the minimum shift engagement?</button>
+      <button class="suggestion-btn" onclick="sendSuggestion(this)">Explain Saturday shift allowances</button>
+      <button class="suggestion-btn" onclick="sendSuggestion(this)">What are the public holiday rates?</button>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-wrap">
+    <textarea id="msg-input" rows="1" placeholder="Ask about Fair Work entitlements…" autocomplete="off"></textarea>
+    <button id="send-btn" onclick="sendMessage()" title="Send">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+      </svg>
+    </button>
+  </div>
+  <div class="input-hint">Press <strong>Enter</strong> to send · <strong>Shift+Enter</strong> for new line</div>
+</div>
+
+<script>
+  const API_URL = 'http://192.168.3.154:8000/api/chat/';
+  const HISTORY_URL = API_URL + 'history/';
+  const chatWindow = document.getElementById('chat-window');
+  const input = document.getElementById('msg-input');
+  const sendBtn = document.getElementById('send-btn');
+
+  // ── Conversation memory ──
+  // A stable session id ties this browser's messages into one conversation,
+  // so the bot remembers earlier turns. Persisted so it survives reloads.
+  function newSessionId() {
+    return (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'sess-' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+  let SESSION_ID = localStorage.getItem('fw_session_id');
+  if (!SESSION_ID) {
+    SESSION_ID = newSessionId();
+    localStorage.setItem('fw_session_id', SESSION_ID);
+  }
+  // Snapshot of the empty-state markup, so "New chat" can restore it.
+  const WELCOME_HTML = chatWindow.innerHTML;
+
+  // Auto-grow textarea
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  function sendSuggestion(btn) {
+    input.value = btn.textContent.trim();
+    sendMessage();
+  }
+
+  function hideWelcome() {
+    const w = document.getElementById('welcome');
+    if (w) w.remove();
+  }
+
+  function scrollToBottom() {
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function addUserBubble(text) {
+    hideWelcome();
+    const row = document.createElement('div');
+    row.className = 'msg-row user';
+    row.innerHTML = `<div class="bubble user">${escHtml(text)}</div>`;
+    chatWindow.appendChild(row);
+    scrollToBottom();
+  }
+
+  function addTypingIndicator() {
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+    row.id = 'typing';
+    row.innerHTML = `
+      <div class="avatar">⚖️</div>
+      <div class="typing-bubble">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>`;
+    chatWindow.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  function addBotBubble(data) {
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+
+    const sourcesHtml = buildSources(data.sources || []);
+    const metaHtml = buildMeta(data.meta || {});
+
+    row.innerHTML = `
+      <div class="avatar">⚖️</div>
+      <div class="bubble bot">
+        <div>${escHtml(data.answer).replace(/\n/g, '<br>')}</div>
+        ${sourcesHtml}
+        ${metaHtml}
+      </div>`;
+    chatWindow.appendChild(row);
+    scrollToBottom();
+  }
+
+  function addErrorBubble(msg) {
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+    row.innerHTML = `
+      <div class="avatar">⚠️</div>
+      <div class="bubble bot error-bubble">${escHtml(msg)}</div>`;
+    chatWindow.appendChild(row);
+    scrollToBottom();
+  }
+
+  function buildSources(sources) {
+    if (!sources.length) return '';
+    const chips = sources.map((s, i) => `
+      <a class="chip" href="${escHtml(s.source_url)}" target="_blank" rel="noopener" title="${escHtml(s.excerpt || '')}">
+        <span class="chip-num">${i + 1}</span>
+        Clause ${escHtml(s.clause_no)} · ${escHtml(s.title)}
+      </a>`).join('');
+    return `<div class="sources">
+      <div class="sources-label">📄 Sources</div>
+      <div class="source-chips">${chips}</div>
+    </div>`;
+  }
+
+  function buildMeta(meta) {
+    if (!Object.keys(meta).length) return '';
+    const parts = [];
+    if (meta.chat_model) parts.push(`<span>🤖 ${meta.chat_model}</span>`);
+    if (meta.total_ms)   parts.push(`<span>⚡ ${meta.total_ms}ms</span>`);
+    if (meta.matches_found !== undefined) parts.push(`<span>🔍 ${meta.matches_found} matches</span>`);
+    return `<div class="meta-row">${parts.join('')}</div>`;
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Replay this session's earlier conversation when the page (re)loads.
+  async function restoreHistory() {
+    try {
+      const res = await fetch(HISTORY_URL + '?session_id=' + encodeURIComponent(SESSION_ID));
+      if (!res.ok) return;
+      const data = await res.json();
+      let rows = Array.isArray(data) ? data : (data.results || []);
+      rows = rows.filter(r => r.success !== false).slice(0, 30).reverse();
+      for (const row of rows) {
+        addUserBubble(row.question);
+        addBotBubble({
+          answer: row.answer,
+          sources: row.sources || [],
+          meta: {
+            chat_model: row.chat_model,
+            total_ms: row.total_ms,
+            matches_found: row.matches_found
+          }
+        });
+      }
+    } catch (err) {
+      /* offline or no history — just start fresh */
+    }
+  }
+
+  // Start a brand-new conversation: fresh session id, cleared window.
+  function newChat() {
+    SESSION_ID = newSessionId();
+    localStorage.setItem('fw_session_id', SESSION_ID);
+    chatWindow.innerHTML = WELCOME_HTML;
+    input.value = '';
+    input.style.height = 'auto';
+    input.focus();
+  }
+
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    addUserBubble(text);
+    const typingRow = addTypingIndicator();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, session_id: SESSION_ID })
+      });
+
+      removeTyping();
+
+      if (!res.ok) {
+        addErrorBubble(`Server error: ${res.status} ${res.statusText}`);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!data.success) {
+        addErrorBubble(data.error || 'Something went wrong. Please try again.');
+        return;
+      }
+
+      addBotBubble(data);
+
+    } catch (err) {
+      removeTyping();
+      addErrorBubble(`Could not connect to the API at ${API_URL} — make sure the server is reachable on your network.`);
+      console.error(err);
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  restoreHistory();
+  input.focus();
+</script>
+</body>
+</html>

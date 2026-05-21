@@ -1,0 +1,20 @@
+{
+  // Live Server: don't auto-reload the browser when backend files change.
+  // The chat API writes to db.sqlite3 on every message — without this,
+  // Live Server would refresh the page after each response.
+  "liveServer.settings.ignoreFiles": [
+    ".vscode/**",
+    "**/*.sqlite3",
+    "**/*.sqlite3-journal",
+    "**/*.sqlite3-wal",
+    "**/*.sqlite3-shm",
+    "db.sqlite3",
+    "**/*.py",
+    "**/*.pyc",
+    "**/__pycache__/**",
+    ".venv/**",
+    "**/*.log",
+    "**/*.scss",
+    "**/*.sass"
+  ]
+}

@@ -1,0 +1,154 @@
+[
+{
+  "model": "awards.awardclause",
+  "pk": 191,
+  "fields": {
+    "award_code": "SCHADS-CALC",
+    "part": "SCHADS Calculation Knowledge Base",
+    "clause_no": "Calc-Ticket",
+    "title": "SCHADS Award Calculation Engine — Specification",
+    "content": "SCHADS Award Calculation Engine — Specification\n\nAuthoritative source — SCHADS engine Ticket. The engine Ticket governs wherever the Penalty or Rules sheets differ: meal allowance is $15.54, travel is $0.99 per km, and sleepover disturbance is paid at the overtime rate. The figures in this document have been reconciled to the Ticket.\n\nThe 11-step SCHADS pay-calculation logic, input schema, multiplier matrix, partitioning rules and the $444.54 validation benchmark.\n\nTicket: SCHADS Award Calculation Engine (v16.0)\n1. Objective\nTo build a payroll logic engine that partitions raw time-logs into SCHADS-compliant line items by evaluating 11 sequential logic steps.\n2. System Input Schema\nField | Type | Description\nemployee_stream | Enum | SOCIAL_COMMUNITY_SERVICES, HOME_CARE, CRISIS_ACCOMMODATION, FAMILY_DAY_CARE\nclassification_level | Integer | 1 through 8.\npay_point | Integer | 1 through 4 (varies by level).\n3. The 11-Step Logic Sequence\nThe engine must process every shift through these steps in exact order. Level 1 (Step 4) overrides all temporal loadings.\nStep 1: Minimum Engagement (Rounding) — [PRIMARY]\nRule: Every standalone engagement must be at least 2.0 hours.  (a)          social and community services employees (except when undertaking disability services work)—3 hours;\nLogic: If duration < 2.0h, add \"Paid Gap Time\" to reach 2.0h.  (b)         all other employees—2 hours.\nSeparation: Engagements separated by a Sleepover (Step 2) are treated as distinct. You cannot sum a pre-sleepover hour and a post-sleepover hour to meet this minimum.\nStep 2: Sleepover Anchor & Partitioning\nStep 2: Sleepover Anchor & PartitioningTrigger: is_sleepover = True (10 PM – 6 AM).Allowance: \nFlat $60.02.Evening Trigger: If a pre-sleepover block ends at 22:00, the entire block uses the Evening Rate ($1.375$ Casual / $1.125$ Perm).\nAction: Apply flat $60.02 allowance.\nThe Evening Trigger: If a shift ends at the Sleepover start (22:00), the entire block preceding it must use the Evening Rate ($1.375$ Casual / $1.125$ Perm) because 22:00 is > 20:00.\nStep 3: Sleepover Disturbance\nTrigger: Work during the 10 PM – 6 AM window.\nRule: Minimum 1.0 hour per disturbance.\nRate: Use Overtime Rate.  (unless Weekend/OT applies).\nStep 4: Public Holiday & Weekend (Highest Rate Wins)\nLogic: If the timestamp is Sat, Sun, or PH, ignore all Evening/Night/Ordinary loadings.\nMultipliers (Perm/Casual): * Sat: 1.50 / 1.75\nSun: 2.00 / 2.25\nPH: 2.50 / 2.75\nStep 5: Meal Allowance ( tenant based)\nTrigger: Total shift > 5 hours without a break, or Overtime > 2 hours.\nValue: $15.54 (Taxable).\nStep 6: Uniform & Laundry ( tenant based)\nValue: $1.23 (Uniform) and $0.32 (Laundry) per shift.\nStep 7: 10-Hour Break Safety\nTrigger: If the gap between the end of the last shift and the start of the current shift is < 10 hours.\nPenalty: Pay all hours of the current shift at overtime Rate until a 10-hour break is provided.\nStep 8: 12-Hour Span Penalty (The \"P\" Variable)\nTrigger: In a \"Broken Shift,\" if Last_Segment_End minus First_Segment_Start > 12 hours.\nPenalty: Pay overtime rate for all hours worked beyond the 12th hour of that span.\nStep 9: Daily Overtime\nTrigger: Active work > 10 hours in a 24-hour window.\nRate: First 2 hours at 1.5x, thereafter 2.0x.\nStep 10: Weekly/Fortnightly Overtime ( tenant based) ( week will start from monday)\nTrigger: Cumulative hours > 38 hour (Week) or > 76 hour (Fortnight).\nStep 11: Travel / KM Allowance\nValue: $0.99 per KM.\n4. Multiplier Matrix (Casual vs. Permanent)\nCategory | Time Trigger (Weekday) | Permanent | Casual (Inc 25%)\nOrdinary | 06:00 – 20:00 | 1 | 1.25\nEvening | finishes between 20:00-24:00 | 1.125 | 1.375\nNight | 00:00 – 06:00 | 1.15 | 1.4\n5. Partitioning Logic for Developers\nBoundary | Logic Name | Action",
+    "chunk_index": 0,
+    "token_estimate": 940,
+    "source_url": "",
+    "vector_id": "SCHADS-CALC-Calc-Ticket-0",
+    "is_indexed": true,
+    "indexed_at": "2026-05-21T10:45:23.693Z",
+    "created_at": "2026-05-21T10:45:05.036Z",
+    "updated_at": "2026-05-21T10:45:05.036Z"
+  }
+},
+{
+  "model": "awards.awardclause",
+  "pk": 192,
+  "fields": {
+    "award_code": "SCHADS-CALC",
+    "part": "SCHADS Calculation Knowledge Base",
+    "clause_no": "Calc-Ticket",
+    "title": "SCHADS Award Calculation Engine — Specification",
+    "content": "SCHADS Award Calculation Engine — Specification (continued)\n\nAuthoritative source — SCHADS engine Ticket. The engine Ticket governs wherever the Penalty or Rules sheets differ: meal allowance is $15.54, travel is $0.99 per km, and sleepover disturbance is paid at the overtime rate. The figures in this document have been reconciled to the Ticket.\n\nOrdinary | 06:00 – 20:00 | 1 | 1.25\nEvening | finishes between 20:00-24:00 | 1.125 | 1.375\nNight | 00:00 – 06:00 | 1.15 | 1.4\n5. Partitioning Logic for Developers\nBoundary | Logic Name | Action\n20:00:00 | The Evening Trigger | Look-Back Logic: If the shift continues past this point (and it's a weekday), all previous hours in that specific engagement (back to the start or last reset) are \"upgraded\" to the Evening Rate.\n0:00:00 | The Midnight Pivot | Calendar Split: Mandatory split for accounting. Multipliers must be re-evaluated against the new calendar day (e.g., Friday Night 1.40x becomes Saturday 1.75x).\n6:00:00 | The Morning Reset | Hard Reset: The Night Rate (1.40x/1.15x) expires. All subsequent hours must drop to the Ordinary Rate (1.25x/1.00x) unless it is a weekend.\n6. Calculation Benchmark (Validation Case)\nScenario: 18 Dec, 9:30 PM – 19 Dec, 6:30 AM (Active Night) | Base: $35.67 (Casual)\nSegment | Logic Applied | Multiplier | Total\n21:30 - 00:00 | Evening (Ends > 20:00) | 1.375 | $122.62\n00:00 - 06:00 | Night Loading | 1.4 | $299.63\n06:00 - 06:30 | Normal Reset | 1.25 | $22.29\nTOTAL  $444.54\n7. Developer Mandatory Constraints\nHighest Rate Wins: Rates never compound. If a segment is both \"Evening\" (1.375) and \"Over 12h Span\" (2.0), the engine must apply 2.0.\nBroken Shift Separation: The 12-hour span includes unpaid breaks, but the penalty applies only to worked minutes.",
+    "chunk_index": 1,
+    "token_estimate": 437,
+    "source_url": "",
+    "vector_id": "SCHADS-CALC-Calc-Ticket-1",
+    "is_indexed": true,
+    "indexed_at": "2026-05-21T10:45:23.693Z",
+    "created_at": "2026-05-21T10:45:05.039Z",
+    "updated_at": "2026-05-21T10:45:05.039Z"
+  }
+},
+{
+  "model": "awards.awardclause",
+  "pk": 193,
+  "fields": {
+    "award_code": "SCHADS-CALC",
+    "part": "SCHADS Calculation Knowledge Base",
+    "clause_no": "Calc-Rules",
+    "title": "SCHADS Calculation Rules — Shift Definitions & Allowances",
+    "content": "SCHADS Calculation Rules — Shift Definitions & Allowances\n\nAuthoritative source — SCHADS engine Ticket. The engine Ticket governs wherever the Penalty or Rules sheets differ: meal allowance is $15.54, travel is $0.99 per km, and sleepover disturbance is paid at the overtime rate. The figures in this document have been reconciled to the Ticket.\n\nShift-type definitions and rates, allowance amounts, the SCHADS rule list and worked shift examples.\n\nType | Start Time | End time | Definitions | Part Time/Full Time Rate | Casual Loading Rate\nDay Shift: | 6:00 AM | 20:00 | ordinary hours typically worked between 6 a.m. and 8 p.m. | 100% | 112.50%\nAfternoon Shift: Evening RATE | After 8 pm | 11:59 AM | Any shift that finishes after 8pm and 12 midnight Monday to Friday | 112.50% | 113.75%\nNight Shift | 12:00 AM | 5:59 AM | Any shift that finishes after 12 midnight or commences before 6am Monday to Friday | 115% | 140.00%\nSleepover | 10:00 PM | 6:00 AM | A sleepover shift includes a continuous rest period of 8 hours. The sleepover and the hours worked before and/or after the sleepover are counted as one continuous shift. a minimum of 4 hours pay before or after the sleepover period. | Allowance flat rate | Allowance flat rate\nPublic Holiday | 12am ( previous day) | 11:59 pm ( Public Holiday Date) | Any shift worked between 12 midnight on the night prior to the public holiday and 12 midnight of the public holiday | 250% | 275.00%\nSaturday | 12:00 AM | 11:59 PM | Any shift worked on a Saturday, starting at 12:AM Friday night/Saturday morning | 150% | 175.00%\nSunday | 12:00 AM | 11:59 PM | Any shift worked on a Saturday, starting at 12:AM Saturday night/Sunday morning | 200% | 225.00%\nOVERTIME  Part () FullTime ()\nAllowances | Cost | RULES\nKM Allowance | $0.99 per km, only applies when using private vehicle during shift | Maximum 12 hours shift\nSleepover | $60.02 | Overtime after 10 hours\nSleep Disturbance | relevant overtime rate during Sleepover | Maximum 38 hours in a week or 76 hours in a fortnight\nOvertime | 150% during week | Minimum 10-hour break between shifts.\nOvertimes - after 2 hours | 200% during week | Minimum Engagement: 3 hours for Social/Community services\nBroken Shift 1  Minimum Engagement: 2 hours for Home Care/Disability workers.\nBroken Shift 2  Rosters: Must be given two weeks in advance; changes need 7 days' notice (exceptions for emergencies/agreement).\nLaundry Allowance | 32 cents per shift (max $1.49/week) for uniforms | Sleep Disturbance is minimum 1 hour paid at relevant overtime rate\nMeal Allowance | $15.54when working overtime for more than an hour, | Broken shifts only maximum of two unpaid breaks, with employee agreement, max 12 hour span from start to finish, double time after 12 hours\nFirst aid allowance\nStart  End\n2nd Jan | 10:00 PM | 7:00 AM\n10:00 PM | 11:59 PM | 2 hours | Night Shift\n12:00 AM | 6:00 AM | 6 hours | Night Shift\n6:00 AM | 7:00 AM | 1 hour | 40 | Ordinary Shift\n5:00 PM  9:00 AM\n5:00 PM | 10:00 PM | 5 | Night shift\n6:00 AM | 9:00 AM | 3 | ordinary\nSleepover 10 | 6:00 AM | Flat rate\n9:30 PM  6:30 AM\n9:30 PM | 12:00 AM | 2:30 | Sunday\n12:00 AM | 12:00 AM | 6 | Night Rate ( Monday )\n12:00 AM | 6:30 AM | 0.5 | Ordinary rate\n9:30 PM  6:30 AM\n9:30 PM | 12:00 AM | 2:30 | Sunday\n12:00 AM | 12:00 AM | 6 | Night Rate ( Monday )\n6:00 AM | 6:30 AM | 0.5 | Ordinary rate\n12 Dec 2025 6:00 AM | 12 Dec 2025 2:00 PM | 8 | 34.58 | Normal rate (casual) | 1.25 | 345.8\n13 Dec 2025 9:30 PM | 14 Dec 2025 6:30 AM | 0.5 | 34.58 | Sunday rate (casual) | 2.25 | 38.9\n13 Dec 2025 9:30 PM | 14 Dec 2025 6:30 AM | 2.5 | 34.58 | Saturday rate (casual) | 1.75 | 151.29\n13 Dec 2025 9:30 PM | 14 Dec 2025 6:30 AM | 6 | 34.58 | Sunday rate (casual) | 2.25 | 466.83\n14 Dec 2025 9:30 PM | 15 Dec 2025 6:30 AM | 6 | 34.58 | Night rate (casual) | 1.4 | 290.47\n14 Dec 2025 9:30 PM | 15 Dec 2025 6:30 AM | 2.5 | 34.58 | Sunday rate (casual) | 2.25 | 194.51",
+    "chunk_index": 0,
+    "token_estimate": 977,
+    "source_url": "",
+    "vector_id": "SCHADS-CALC-Calc-Rules-0",
+    "is_indexed": true,
+    "indexed_at": "2026-05-21T10:45:23.693Z",
+    "created_at": "2026-05-21T10:45:05.042Z",
+    "updated_at": "2026-05-21T10:45:05.042Z"
+  }
+},
+{
+  "model": "awards.awardclause",
+  "pk": 194,
+  "fields": {
+    "award_code": "SCHADS-CALC",
+    "part": "SCHADS Calculation Knowledge Base",
+    "clause_no": "Calc-Rules",
+    "title": "SCHADS Calculation Rules — Shift Definitions & Allowances",
+    "content": "SCHADS Calculation Rules — Shift Definitions & Allowances (continued)\n\nAuthoritative source — SCHADS engine Ticket. The engine Ticket governs wherever the Penalty or Rules sheets differ: meal allowance is $15.54, travel is $0.99 per km, and sleepover disturbance is paid at the overtime rate. The figures in this document have been reconciled to the Ticket.\n\n14 Dec 2025 9:30 PM | 15 Dec 2025 6:30 AM | 6 | 34.58 | Night rate (casual) | 1.4 | 290.47\n14 Dec 2025 9:30 PM | 15 Dec 2025 6:30 AM | 2.5 | 34.58 | Sunday rate (casual) | 2.25 | 194.51\n14 Dec 2025 9:30 PM | 15 Dec 2025 6:30 AM | 0.5 | 34.58 | Normal rate (casual) | 1.25 | 21.61\n30 Dec 2025 5:00 PM | 31 Dec 2025 9:00 AM | Sleepover Allowance\n30 Dec 2025 5:00 PM | 31 Dec 2025 9:00 AM | KM Allowance\n30 Dec 2025 5:00 PM | 31 Dec 2025 9:00 AM | 3 | 1.25 | 34.58 | Normal rate (casual) | 129.68\n30 Dec 2025 5:00 PM | 31 Dec 2025 9:00 AM | 1.5 | 1.75 | 34.58 | Overtime first 2 hours rate (casual) | 90.77\n30 Dec 2025 5:00 PM | 31 Dec 2025 9:00 AM | 3.5 | 1.38 | 34.58 | Evening rate (casual) | 166.42\nDIDNT GET THIS DETAILS FROM MYP REPORT emily.zamanis8@gmail.com Please add details for this entry\n04 Jan 2026 9:30 PM | 05 Jan 2026 6:30 AM | 1.52 | 34.58 | Sunday rate (casual) | 2.25 | 118.26\n04 Jan 2026 9:30 PM | 05 Jan 2026 6:30 AM | 0.98 | 34.58 | Overtime after 2 hours rate (casual) | 2.25 | 76.25\n04 Jan 2026 9:30 PM | 05 Jan 2026 6:30 AM | 6 | 34.58 | Night rate (casual) | 1.4 | `\n04 Jan 2026 9:30 PM | 05 Jan 2026 6:30 AM | 0.5 | 34.58 | Normal rate (casual) | 1.25 | 21.61\nStart  End\n6:00 PM | 7:00 AM | With Sleepover\nExample | 6:00 PM | 10:00 PM | 4 hours | Afternoon shift\n10:00 PM | 6:00 AM | Allowance | Sleepover allowance\n6:00 AM | 7:00 AM | 1 hour | Ordinary hours\n6:00 PM | 7:00 AM | WIth Sleepover & 2 hour Sleep disturbance\n6:00 PM | 10:00 PM | 4 hours | Afternoon shift\n10:00 PM | 6:00 AM | Allowance | Sleepover allowance\n6:00 AM | 7:00 AM | 1 hour | Ordinary hours\nALLOWANCE | 2 hours sleep disturbance | 150% | (please note after 2 hours of sleep disturbance its 200%)\n6:00 PM | 7:00 AM | WIth activeNight\n6:00 PM | 10:00 PM | 4 hours | Afternoon shift\n10:00 PM | 6:00 AM | 8 hours | Night rate\n6:00 AM | 7:00 AM | 1 hour | Ordinary hours\n6:00 PM | 7:00 AM | The weekly hours will get will get over after 2 hours | with sleepover\n6:00 PM | 8:00 PM | 2 hours | Afternoon shift\n8:00 PM | 10:00 PM | 2 hours | Overtime 150%\n10:00 PM | 6:00 AM | Allowance | Sleepover allowance\n6:00 AM | 7:00 AM | 1 hour | Overtime 200%\n6:00 PM | 7:00 AM | The weekly hours will get will get over after 2 hours | active night\n6:00 PM | 8:00 PM | 2 hours | Afternoon shift\n8:00 PM | 10:00 PM | 2 hours | Overtime 150%\n10:00 PM | 7:00 AM | 9 hours | Overtime 200%\n8:00 AM | 7:00 PM | The weekly hours will get will get over after 2 hours\n8:00 AM | 10:00 AM | 2 hours | Ordinary hours\n10:00 AM | 12:00 PM | 2 hours | Overtime 150%\n12:00 PM | 7:00 PM | 7 hours | Overtime 200%",
+    "chunk_index": 1,
+    "token_estimate": 734,
+    "source_url": "",
+    "vector_id": "SCHADS-CALC-Calc-Rules-1",
+    "is_indexed": true,
+    "indexed_at": "2026-05-21T10:45:23.693Z",
+    "created_at": "2026-05-21T10:45:05.044Z",
+    "updated_at": "2026-05-21T10:45:05.044Z"
+  }
+},
+{
+  "model": "awards.awardclause",
+  "pk": 195,
+  "fields": {
+    "award_code": "SCHADS-CALC",
+    "part": "SCHADS Calculation Knowledge Base",
+    "clause_no": "Calc-Penalty",
+    "title": "SCHADS Penalty Rates & Allowances",
+    "content": "SCHADS Penalty Rates & Allowances\n\nAuthoritative source — SCHADS engine Ticket. The engine Ticket governs wherever the Penalty or Rules sheets differ: meal allowance is $15.54, travel is $0.99 per km, and sleepover disturbance is paid at the overtime rate. The figures in this document have been reconciled to the Ticket.\n\nPenalty multipliers by shift type for permanent/full-time and casual employees, plus the full list of allowance amounts.\n\nShift type | Part-time/Full-time multiplier | Casual multiplier | Comments | Allowances\nWeekday span and core penalties | Allowances | Rate\nOrdinary hours (Mon–Fri, 6am–8pm) | 1 | 1.25 | Broken shift allowance - 1 unpaid break | $20.82 per broken shift\nAfternoon shift (finishes after 8pm, before midnight) | 1.125 | 1.375 | Broken shift allowance - 2 unpaid breaks | $27.56 per broken shift\nNight shift (finishes after midnight or starts before 6am) | 1.15 | 1.4 | First aid allowance - full-time | $20.46 per week\nWeekends and public holidays | First aid allowance - part-time or casual | $0.54 per hour up to a maximum of $20.46 per week\nSaturday | 1.5 | 1.75 | Any shift worked on a Saturday, starting at 12:AM Saturday night/Sunday morning | Hot work allowance - 40°C-46°C (employed at current workplace before 8 August 1991) | $0.61 per hour\nSunday | 2 | 2.25 | Any shift worked on a Saturday, starting at 12:AM Friday night/Saturday morning | Hot work allowance - over 46° (employed at current workplace before 8 August 1991) | $0.73 per hour\nPublic holiday | 2.5 | 2.75 | Any shift worked between 12 midnight on the night prior to the public holiday and 12 midnight of the public holiday | Laundry allowance | $0.32 per shift up to a maximum of $1.49 per week\nRemote work | Laundry allowance - not a uniform | $0.32 per shift\nDaytime | 1.25 | 1.5 | 100*1.75 | Meal allowance | 15.54\nEvening Shift | 1.375 | 1.625 | On call allowance - any 24 hour period or part thereof when on call between the time of finishing ordinary duty on Monday to the time of finishing ordinary duty on Friday | $24.50\nNight shift | 1.4 | 1.65 | On call allowance - any other 24 hour period or public holiday, or part thereof | 48.51\nSaturday—within span (6am–8pm) | 1.75 | 2 | Sleepover allowance | $60.02 for each sleepover\nSaturday—first 2 hrs outside span | 1.75 | 2 | Special or protective clothing reimbursement | reimbursement for any rubber gloves, special clothing or safety equipment the employee is required to provide\nSaturday—after 2 hrs outside span | 1.75 | 2 | Uniform allowance | $1.23 per shift up to a maximum of $6.24 per week\nSunday | 2.25 | 2.5 | Repair and replacement of clothing reimbursement - not a uniform | reimbursement for the reasonable cost incurred in repairing or replacing the clothing with a substitute item\nPublic holiday | 2.75 | 3 | Telephone reimbursement - maintain telephone (on call) | reimbursement for rental charges\nMore than 10 hours a day—first 2 hrs | 1.75 | 2 | Telephone reimbursement - install and maintain telephone (on call) | reimbursement for the cost of installation and rental charges\nMore than 10 hours a day—after 2 hrs | 2.25 | 2.5 | Overnight away from home reimbursement | reimbursement for the cost of reasonable accommodation and meals\nWeekday Overtime (Mon–Sat) | Travelling expenses reimbursement | reimbursement for the agreed cost of reasonable fares, meals and accommodation expenses\nFirst block (first 3 hrs FT, first 2 hrs PT/disability services) | 1.5 | 1.75 | Vehicle allowance | $0.99 per km\nAfter block (after 3 hrs FT, after 2 hrs PT/disability services) | 2 | 2.25\nPublic holiday overtime | 2.5 | 2.75\nLess than 10-hour break after working overtime | 2 | 2.25\nAllowances\nBroken shifts",
+    "chunk_index": 0,
+    "token_estimate": 923,
+    "source_url": "",
+    "vector_id": "SCHADS-CALC-Calc-Penalty-0",
+    "is_indexed": true,
+    "indexed_at": "2026-05-21T10:45:23.693Z",
+    "created_at": "2026-05-21T10:45:05.047Z",
+    "updated_at": "2026-05-21T10:45:05.047Z"
+  }
+},
+{
+  "model": "awards.awardclause",
+  "pk": 196,
+  "fields": {
+    "award_code": "SCHADS-CALC",
+    "part": "SCHADS Calculation Knowledge Base",
+    "clause_no": "Calc-Penalty",
+    "title": "SCHADS Penalty Rates & Allowances",
+    "content": "SCHADS Penalty Rates & Allowances (continued)\n\nAuthoritative source — SCHADS engine Ticket. The engine Ticket governs wherever the Penalty or Rules sheets differ: meal allowance is $15.54, travel is $0.99 per km, and sleepover disturbance is paid at the overtime rate. The figures in this document have been reconciled to the Ticket.\n\nAfter block (after 3 hrs FT, after 2 hrs PT/disability services) | 2 | 2.25\nPublic holiday overtime | 2.5 | 2.75\nLess than 10-hour break after working overtime | 2 | 2.25\nAllowances\nBroken shifts\nWorking beyond a 12-hour span 1 Break | $20.82 per broken shift | Same | A Broken Shift Allowance of $20.82 is payable for a shift with a single break. For each additional break occurring within the same day, an additional payment of $27.56 per break will be applied.\nBroken shift allowance - 2 unpaid breaks | $27.56 per broken shift | Same\nLaundry allowance\nLaundry allowance  $0.32 per shift up to a maximum of $1.49 per week\nLaundry allowance - not a uniform  $0.32 per shift\nMeal allowance\nMeal allowance | $15.54 | Same | 15.54when working overtime for more than an hour,\nSleepover allowance\nSleepover allowance | $60.02 for each sleepover | Same | A sleepover shift includes a continuous rest period of 8 hours. The sleepover and the hours worked before and/or after the sleepover are counted as one continuous shift. a minimum of 4 hours pay before or after the sleepover period.\nUniform allowance\nUniform allowance  $1.23 per shift up to a maximum of $6.24 per week\nKM Allowance\nVehicle allowance | $0.99 per km | Only applies when using private vehicle during shift\nRULES\nMaximum 12 hours shift\nOvertime after 10 hours\nMaximum 38 hours in a week or 76 hours in a fortnight\nMinimum 10-hour break between shifts.\nMinimum Engagement: 3 hours for Social/Community services\nMinimum Engagement: 2 hours for Home Care/Disability workers.\nRosters: Must be given two weeks in advance; changes need 7 days' notice (exceptions for emergencies/agreement).\nSleep Disturbance is minimum 1 hour paid at relevant overtime rate",
+    "chunk_index": 1,
+    "token_estimate": 512,
+    "source_url": "",
+    "vector_id": "SCHADS-CALC-Calc-Penalty-1",
+    "is_indexed": true,
+    "indexed_at": "2026-05-21T10:45:23.693Z",
+    "created_at": "2026-05-21T10:45:05.050Z",
+    "updated_at": "2026-05-21T10:45:05.050Z"
+  }
+},
+{
+  "model": "awards.awardclause",
+  "pk": 197,
+  "fields": {
+    "award_code": "SCHADS-CALC",
+    "part": "SCHADS Calculation Knowledge Base",
+    "clause_no": "Calc-Conditions",
+    "title": "SCHADS Calculation Conditions & Pay Formula",
+    "content": "SCHADS Calculation Conditions & Pay Formula\n\nAuthoritative source — SCHADS engine Ticket. The engine Ticket governs wherever the Penalty or Rules sheets differ: meal allowance is $15.54, travel is $0.99 per km, and sleepover disturbance is paid at the overtime rate. The figures in this document have been reconciled to the Ticket.\n\nThe condition checklist, the unified pay formula and worked calculation examples.\n\nQuestion / Logic  Action if \"Yes\"\nOrder | Check Category | Condition / Logic | Action if \"Yes\"\n3 | Sleepover | 8-hr period on-site? | Add $60.02; Ensure pre/post work total $\\ge$ 4 hrs.\n1 | Holiday | Is the date a Public Holiday? | Use 2.5 (FT/PT) or 2.75 (Casual) for ALL hours.\n2 | Safety | < 10 hrs break since last shift? | Use 2.0 (FT/PT) or 2.25 (Casual) for ALL hours.\n4 | Broken Shift | Broken Shift | Add $20.82 (1 break) or $27.56 (2 breaks).\n5 | 12hr Span | (Final Finish - First Start) > 12hrs? | Hours after 12th hr = P. Use 2.0 (FT/PT) or 2.25 (C).\n6 | Min. Engagement | Segment < 2 hrs (Home Care)? | Round that segment duration up to 2.0.\n7 | Daily OT | Actual work > 10 hrs in one day? | Use 1.5/2.0 (FT/PT) or 1.75/2.25 (Casual).\n8 | Weekly OT | Cumulative hours > 38/week? | Use 1.5/2.0 (FT/PT) or 1.75/2.25 (Casual).\n$$Total Pay = (Work\\ hours \\times B \\times M) + \\$60.02 + Allowances$$\nExample: Work 5pm–10pm, Sleepover, Work 6am–9am.\nSleepover Check: Yes. Add $60.02.\nMin Engagement: Worked 5 + 3 = 8 hours total (Exceeds the 4-hour minimum).\nBroken Shift Check: No (A sleepover is not a \"break\" in a broken shift; it is its own category).\n12hr Span: From 5pm start, the 12hr mark is 5am. Work from 6am–9am (3 hours) is after the 12hr span.\nCalculation:\nBefore Sleepover: 5 hrs × $B$ × Evening/Night Rate.\nAfter Sleepover: 3 hrs × $B$ × 2.25 (Span Penalty).\nAllowance: + $60.02.\nSegment | Label | Time | Multiplier | Calculation | Subtotal\n9:30 PM – 12:00 AM | E ( Evening) | 2.50 hrs | 2.75 | $2.50 \\times 35.67 \\times 2.75$ | $245.23\n12:00 AM – 6:00 AM | AN ( Active Night) | 6.00 hrs | 2.75 | $6.00 \\times 35.67 \\times 2.75$ | $588.56\n6:00 AM – 6:30 AM | D ( Daytime) | 0.50 hrs | 2.75 | $0.50 \\times 35.67 \\times 2.75$ | $49.05\nTOTALS | 9.00 hrs | $882.84\nThe Unified Payout Formula\nTo calculate your total pay ($P$), apply the specific hours to their corresponding rates:\n$$P = \\underbrace{(D \\times B \\times M_d) + (E \\times B \\times M_e) + (AN \\times B \\times M_n)}_{\\text{Ordinary & Shift Loading}} + \\underbrace{(P \\times B \\times M_p)}_{\\text{Span Penalty}} + \\underbrace{Allowances}_{\\text{Broken/Sleep/Travel}}$$\nFormula Application Rules:\nHighest Rate Wins: If an hour is both AN (Night) and P (Span Penalty), use the higher multiplier (e.g., for a Casual, 2.25 is higher than 1.40).\nPublic Holiday Override: If the day is a Public Holiday, ignore D, E, AN, and P. Use PH for every hour.\nThe \"P\" Variable: The moment you cross the 12-hour mark from your first start of the day, all subsequent work hours are switched to the P rate.\nWith Sleepover:\nSegment 1 (E): 5:00 PM – 10:00 PM (Work)\nSleepover Period: 10:00 PM – 6:00 AM (Sleeping)\nSegment 2 (D/P): 6:00 AM – 9:00 AM (Work)\nStep 1: Run the Condition Checkers\nSleepover? Yes. Add $60.02 allowance.\nMinimum Engagement? Worked 5h + 3h = 8h. (Passed the 4h minimum).\n12-Hour Span? Start is 5:00 PM. The 12-hour limit is 5:00 AM.\nPenalty Trigger: Because the 12-hour mark passed while you were sleeping, all work upon waking up (6:00 AM) is now P (Span Penalty).\nStep 2: Categorize the Variables\nE (Evening): 5:00 PM – 10:00 PM (5 hours) → Multiplier 1.375\nAN (Active Night): 0 hours (You were sleeping).\nP (Span Penalty): 6:00 AM – 9:00 AM (3 hours) → Multiplier 2.25\nAllowance: Sleepover Allowance → $60.02\nStep 3: Apply the Formula\n$$Total Pay = (E \\times B \\times 1.375) + (P \\times B \\times 2.25) + \\$60.02$$\nThe Calculation:\nSegment | Label | Calculation | Subtotal",
+    "chunk_index": 0,
+    "token_estimate": 968,
+    "source_url": "",
+    "vector_id": "SCHADS-CALC-Calc-Conditions-0",
+    "is_indexed": true,
+    "indexed_at": "2026-05-21T10:45:23.693Z",
+    "created_at": "2026-05-21T10:45:05.054Z",
+    "updated_at": "2026-05-21T10:45:05.054Z"
+  }
+},
+{
+  "model": "awards.awardclause",
+  "pk": 198,
+  "fields": {
+    "award_code": "SCHADS-CALC",
+    "part": "SCHADS Calculation Knowledge Base",
+    "clause_no": "Calc-Conditions",
+    "title": "SCHADS Calculation Conditions & Pay Formula",
+    "content": "SCHADS Calculation Conditions & Pay Formula (continued)\n\nAuthoritative source — SCHADS engine Ticket. The engine Ticket governs wherever the Penalty or Rules sheets differ: meal allowance is $15.54, travel is $0.99 per km, and sleepover disturbance is paid at the overtime rate. The figures in this document have been reconciled to the Ticket.\n\nStep 3: Apply the Formula\n$$Total Pay = (E \\times B \\times 1.375) + (P \\times B \\times 2.25) + \\$60.02$$\nThe Calculation:\nSegment | Label | Calculation | Subtotal\nEvening Work | E | 5-10 | 5.00 \\times 35.67 \\times 1.375$ | $245.23\nSleepover | Fixed | 10-6 | Allowance Amount10-6 | $60.02\nMorning Work | P | 6-9 | 3.00 \\times 35.67 \\times 2.25$ | $240.77\nTOTAL PAY  $546.02\nComparison: What if you were Full-Time?\nIf you were Full-Time ($B = 35.00$), the multipliers change but the logic remains the same:\nE: $5 \\times 35 \\times 1.125 = \\$196.88$\nSleepover: $\\$60.02$\nP (Span Penalty): $3 \\times 35 \\times 2.0 = \\$210.00$\nTotal: $466.90\nImportant: The \"Sleep Disturbance\" Add-on\nIf a client woke you up for 30 minutes at 2:00 AM:\nCondition: Disturbance must be paid at a minimum of 1 hour.\nMultiplier: Since it's between 10 PM and 6 AM, it's Night/OT. Most systems apply the 2.25 (Casual) or 2.0 (FT) overtime rate for disturbances.\nImpact: You would add $(1 \\times 35.67 \\times 2.25) = \\mathbf{+\\$80.26}$ to the total above.\nSegment | Label | Time | Multiplier | Calculation | Subtotal\nEvening Work | E | 5.0 hrs | 1.375 | $5 \\times 35.67 \\times 1.375$ | $245.23\nSleepover | Fixed | N/A | N/A | Allowance | $60.02\nDisturbance | SD | 1.0 hr* | 2.25 | $1 \\times 35.67 \\times 2.25$ | $80.26\nMorning Work | P | 3.0 hrs | 2.25 | $2 \\times 35.67 \\times 2.25$ | $160.52\nTOTAL PAY  $546.03",
+    "chunk_index": 1,
+    "token_estimate": 431,
+    "source_url": "",
+    "vector_id": "SCHADS-CALC-Calc-Conditions-1",
+    "is_indexed": true,
+    "indexed_at": "2026-05-21T10:45:23.693Z",
+    "created_at": "2026-05-21T10:45:05.057Z",
+    "updated_at": "2026-05-21T10:45:05.057Z"
+  }
+}
+]
