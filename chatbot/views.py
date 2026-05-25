@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db.models import Count, Max, Subquery, OuterRef
 from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
@@ -13,6 +14,7 @@ from .serializers import (
     ChatLogSerializer,
     ChatRequestSerializer,
     ScrapeRequestSerializer,
+    SessionSummarySerializer,
 )
 
 # Conversation memory tuning.
@@ -114,6 +116,76 @@ class ChatHistoryView(generics.ListAPIView):
         if session_id:
             queryset = queryset.filter(session_id=session_id)
         return queryset[:100]
+
+
+class ChatSessionsView(APIView):
+    """GET a paginated list of chat sessions with summary metadata.
+
+    Query params:
+      ?page=1&limit=20
+
+    Response shape:
+      {
+        "results": [
+          {
+            "session_id": "...",
+            "message_count": 12,
+            "last_message_at": "2026-05-25T...",
+            "preview": "What are Sunday penalty rates?"
+          },
+          ...
+        ],
+        "count": 42,
+        "page": 1,
+        "limit": 20,
+        "total_pages": 3
+      }
+
+    Sorted by last activity descending (newest first).
+    Used by the frontend to render a session sidebar / history list.
+    """
+
+    def get(self, request):
+        # Pagination params
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+        except (ValueError, TypeError):
+            page = 1
+        try:
+            limit = max(1, int(request.query_params.get("limit", 20)))
+        except (ValueError, TypeError):
+            limit = 20
+        limit = min(limit, 100)  # hard cap
+        offset = (page - 1) * limit
+
+        # First question per session (chronological) → preview (scalar string or None)
+        first_q_subq = (
+            ChatLog.objects.filter(session_id=OuterRef("session_id"))
+            .order_by("created_at")
+            .values_list("question", flat=True)[:1]
+        )
+
+        qs = (
+            ChatLog.objects.values("session_id")
+            .annotate(
+                message_count=Count("id"),
+                last_message_at=Max("created_at"),
+                preview=Subquery(first_q_subq),
+            )
+            .order_by("-last_message_at")
+        )
+
+        total = qs.count()
+        paginated = qs[offset : offset + limit]
+        data = SessionSummarySerializer(paginated, many=True).data
+
+        return Response({
+            "results": data,
+            "count": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit if limit else 0,
+        })
 
 
 class ScrapeAwardView(APIView):

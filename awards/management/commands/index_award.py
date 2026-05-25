@@ -46,6 +46,15 @@ class Command(BaseCommand):
             raise CommandError(str(exc)) from exc
         self.stdout.write(f"Embedding dimension: {dimension}")
 
+        configured_dim = settings.PINECONE["DIMENSION"]
+        if dimension != configured_dim:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Probed dimension ({dimension}) != PINECONE_DIMENSION ({configured_dim}). "
+                    f"Set PINECONE_DIMENSION={dimension} or the index query will fail."
+                )
+            )
+
         try:
             vectorstore.ensure_index(dimension)
             if options["recreate"]:

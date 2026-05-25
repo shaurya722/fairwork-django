@@ -308,4 +308,39 @@ def lookup_hourly_rate(stream: str, level: int | None, pay_point: int | None) ->
     if fuzzy:
         return max(fuzzy)
 
+    # Graceful fallback: if the exact pay_point does not exist for this level,
+    # return the highest rate available for the same level (and warn).
+    # This handles cases like "home care level 2 pay point 3" where the award
+    # only defines pay points 1 and 2 for that level.
+    if pay_point is not None and level is not None:
+        level_section_hints = []
+        if stream == "HOME_CARE":
+            level_section_hints.append(f"home care employee level {level}")
+        elif stream == "SOCIAL_COMMUNITY_SERVICES":
+            level_section_hints.append(f"social and community services employee level {level}")
+        elif stream == "CRISIS_ACCOMMODATION":
+            level_section_hints.append(f"crisis accommodation employee level {level}")
+            level_section_hints.append(f"social and community services employee level {level + 2}")
+        elif stream == "FAMILY_DAY_CARE":
+            level_section_hints.append(f"family day care employee level {level}")
+
+        level_matches = []
+        for row in all_rows:
+            section_ok = any(
+                hint.lower() in row["section"].lower() for hint in level_section_hints
+            )
+            # classification like "Pay point 1", "Pay point 2", etc.
+            if section_ok and row["classification"].lower().startswith("pay point"):
+                level_matches.append(row["hourly_rate"])
+
+        if level_matches:
+            best = max(level_matches)
+            import logging
+            logging.getLogger(__name__).warning(
+                "Pay point %s not defined for %s level %s. "
+                "Falling back to highest available pay point for this level: $%.2f",
+                pay_point, stream, level, best,
+            )
+            return best
+
     return None

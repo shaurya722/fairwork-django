@@ -45,3 +45,14 @@ class ChatLogSerializer(serializers.ModelSerializer):
             "error",
             "created_at",
         ]
+
+
+class SessionSummarySerializer(serializers.Serializer):
+    """Serialises a single chat session summary for the sessions listing API.
+
+    Used by GET /api/chat/sessions/ to power a chat history sidebar.
+    """
+    session_id = serializers.CharField()
+    message_count = serializers.IntegerField()
+    last_message_at = serializers.DateTimeField()
+    preview = serializers.CharField(allow_blank=True, allow_null=True, required=False)

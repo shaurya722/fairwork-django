@@ -4,8 +4,12 @@ Uses the Ollama HTTP API (`/api/embeddings`). The default model is
 ``nomic-embed-text``; override with the OLLAMA_EMBED_MODEL env var.
 """
 
+import logging
+
 import requests
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingError(RuntimeError):
@@ -29,17 +33,28 @@ def embed_texts(texts):
             )
             resp.raise_for_status()
         except requests.RequestException as exc:
+            logger.error(
+                "embedding request FAILED (%s, model=%s): %s",
+                cfg["BASE_URL"], cfg["EMBED_MODEL"], exc,
+            )
             raise EmbeddingError(
                 f"Ollama embedding request failed ({cfg['BASE_URL']}): {exc}. "
                 f"Is Ollama running and is '{cfg['EMBED_MODEL']}' pulled?"
             ) from exc
         vector = resp.json().get("embedding")
         if not vector:
+            logger.error(
+                "embedding model '%s' returned an EMPTY vector", cfg["EMBED_MODEL"]
+            )
             raise EmbeddingError(
                 f"Ollama returned an empty embedding for model '{cfg['EMBED_MODEL']}'. "
                 f"Pull it with: ollama pull {cfg['EMBED_MODEL']}"
             )
         vectors.append(vector)
+    logger.debug(
+        "embedded %d text(s) with '%s' (dim=%d)",
+        len(texts), cfg["EMBED_MODEL"], len(vectors[0]) if vectors else 0,
+    )
     return vectors
 
 

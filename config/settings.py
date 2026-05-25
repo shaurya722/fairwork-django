@@ -134,6 +134,7 @@ PINECONE = {
     "REGION": os.getenv("PINECONE_REGION", "us-east-1"),
     "NAMESPACE": os.getenv("PINECONE_NAMESPACE", "ma000100"),
     "METRIC": os.getenv("PINECONE_METRIC", "cosine"),
+    "DIMENSION": int(os.getenv("PINECONE_DIMENSION", "768")),
 }
 
 RAG = {
@@ -168,3 +169,47 @@ if LANGSMITH["TRACING"]:
         os.environ.setdefault("LANGSMITH_PROJECT", LANGSMITH["PROJECT"])
     if LANGSMITH["ENDPOINT"]:
         os.environ.setdefault("LANGSMITH_ENDPOINT", LANGSMITH["ENDPOINT"])
+
+# --------------------------------------------------------------------------
+# Logging — traces every chat query through the RAG / calculation pipeline.
+#
+# The `services` logger records, per request: the user query, its embedding
+# vector summary, the similar vectors retrieved (id + similarity score), which
+# path was chosen (calculation vs RAG) and the engine result. Read the trace
+# in the console or in logs/chatbot.log to see exactly where an answer is
+# formed — and where a rule is or is not applied.
+# --------------------------------------------------------------------------
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "pipeline": {
+            "format": "{asctime} [{levelname}] {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "pipeline",
+        },
+        "pipeline_file": {
+            "class": "logging.FileHandler",
+            "filename": str(LOG_DIR / "chatbot.log"),
+            "encoding": "utf-8",
+            "formatter": "pipeline",
+        },
+    },
+    "loggers": {
+        # All RAG / calculation tracing flows through the `services` parent
+        # logger (services.rag, services.llm, services.embeddings, ...).
+        "services": {
+            "handlers": ["console", "pipeline_file"],
+            "level": os.getenv("CHATBOT_LOG_LEVEL", "INFO").upper(),
+            "propagate": False,
+        },
+    },
+}
