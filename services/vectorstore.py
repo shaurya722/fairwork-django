@@ -103,9 +103,14 @@ def get_index():
     return pc.Index(cfg["INDEX_NAME"])
 
 
-def upsert(vectors, batch_size=50):
-    """Upsert vectors: list of {id, values, metadata}. Returns the count."""
+def upsert(vectors, batch_size=50, namespace=None):
+    """Upsert vectors: list of {id, values, metadata}. Returns the count.
+
+    ``namespace`` defaults to ``PINECONE["NAMESPACE"]`` (award clauses). Pass
+    a per-year NDIS namespace to keep the two corpora separate.
+    """
     cfg = _cfg()
+    ns = namespace or cfg["NAMESPACE"]
     if vectors:
         vec_dim = len(vectors[0]["values"])
         configured_dim = cfg["DIMENSION"]
@@ -118,13 +123,18 @@ def upsert(vectors, batch_size=50):
     else:
         index = get_index()
     for start in range(0, len(vectors), batch_size):
-        index.upsert(vectors=vectors[start:start + batch_size], namespace=cfg["NAMESPACE"])
+        index.upsert(vectors=vectors[start:start + batch_size], namespace=ns)
     return len(vectors)
 
 
-def query(vector, top_k):
-    """Search the index. Returns a list of {id, score, metadata} dicts."""
+def query(vector, top_k, namespace=None):
+    """Search the index. Returns a list of {id, score, metadata} dicts.
+
+    ``namespace`` defaults to the award-clause namespace; pass an NDIS-year
+    namespace to scope retrieval to that corpus.
+    """
     cfg = _cfg()
+    ns = namespace or cfg["NAMESPACE"]
     configured_dim = cfg["DIMENSION"]
     vec_dim = len(vector)
     if vec_dim != configured_dim:
@@ -138,12 +148,12 @@ def query(vector, top_k):
             vector=vector,
             top_k=top_k,
             include_metadata=True,
-            namespace=cfg["NAMESPACE"],
+            namespace=ns,
         )
     except Exception as exc:  # noqa: BLE001 - logged then re-raised for the pipeline
         logger.error(
             "vector store query FAILED (index=%s namespace=%s): %s",
-            cfg["INDEX_NAME"], cfg["NAMESPACE"], exc,
+            cfg["INDEX_NAME"], ns, exc,
         )
         raise
     matches = _attr(response, "matches", []) or []
@@ -160,16 +170,17 @@ def query(vector, top_k):
     return results
 
 
-def delete_all():
-    """Remove every vector in the configured namespace."""
+def delete_all(namespace=None):
+    """Remove every vector in a namespace (defaults to the award namespace)."""
     cfg = _cfg()
+    ns = namespace or cfg["NAMESPACE"]
     index = get_index()
     try:
-        index.delete(delete_all=True, namespace=cfg["NAMESPACE"])
+        index.delete(delete_all=True, namespace=ns)
     except Exception as exc:  # noqa: BLE001
         msg = str(exc).lower()
         if "namespace" in msg or "not found" in msg:
-            logger.info("Namespace '%s' already empty or missing; nothing to delete.", cfg["NAMESPACE"])
+            logger.info("Namespace '%s' already empty or missing; nothing to delete.", ns)
             return
         raise
 
@@ -178,3 +189,64 @@ def stats():
     """Return index statistics (vector counts, dimension)."""
     index = get_index()
     return index.describe_index_stats()
+
+
+def list_namespaces() -> list[str]:
+    """Return all namespace names that contain vectors in the index."""
+    try:
+        s = stats()
+        namespaces = s.get("namespaces", {}) or {}
+        return [ns for ns in namespaces.keys() if namespaces[ns].get("vector_count", 0) > 0]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def query_multi(vector, top_k: int, namespaces: list[str] | None = None) -> list[dict]:
+    """Query multiple namespaces and return merged top-k results by score.
+    
+    Args:
+        vector: Embedding vector
+        top_k: Number of results to return across all namespaces
+        namespaces: List of namespace strings. If None or empty, queries only the default NAMESPACE.
+    
+    Returns:
+        List of {id, score, metadata, namespace} dicts, sorted by score desc, truncated to top_k.
+    """
+    cfg = _cfg()
+    configured_dim = cfg["DIMENSION"]
+    vec_dim = len(vector)
+    if vec_dim != configured_dim:
+        raise VectorStoreError(
+            f"Query vector dimension {vec_dim} does not match PINECONE_DIMENSION={configured_dim}. "
+            f"Set PINECONE_DIMENSION={vec_dim} in your environment and recreate the index."
+        )
+    
+    target_namespaces = namespaces if namespaces else [cfg["NAMESPACE"]]
+    
+    all_results: list[dict] = []
+    index = get_index()
+    
+    for ns in target_namespaces:
+        try:
+            response = index.query(
+                vector=vector,
+                top_k=top_k,  # fetch top_k per namespace; we'll merge globally
+                include_metadata=True,
+                namespace=ns,
+            )
+            matches = _attr(response, "matches", []) or []
+            for match in matches:
+                metadata = _attr(match, "metadata", {}) or {}
+                all_results.append({
+                    "id": _attr(match, "id", ""),
+                    "score": float(_attr(match, "score", 0.0) or 0.0),
+                    "metadata": dict(metadata),
+                    "namespace": ns,
+                })
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("query_multi: namespace '%s' query failed: %s", ns, exc)
+            continue
+    
+    # Sort by score desc and take global top_k
+    all_results.sort(key=lambda x: x["score"], reverse=True)
+    return all_results[:top_k]

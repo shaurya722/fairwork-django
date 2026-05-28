@@ -134,6 +134,10 @@ PINECONE = {
     "REGION": os.getenv("PINECONE_REGION", "us-east-1"),
     "NAMESPACE": os.getenv("PINECONE_NAMESPACE", "ma000100"),
     "METRIC": os.getenv("PINECONE_METRIC", "cosine"),
+    # IMPORTANT: Must match the embedding model dimension.
+    # - nomic-embed-text / most Ollama: 768
+    # - text-embedding-3-small: 1536
+    # - text-embedding-3-large: 3072
     "DIMENSION": int(os.getenv("PINECONE_DIMENSION", "768")),
 }
 
@@ -146,11 +150,23 @@ LLM = {
     "PROVIDER": os.getenv("LLM_PROVIDER", "ollama").lower(),
     "TIMEOUT": int(os.getenv("LLM_TIMEOUT", "60")),
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
-    "OPENAI_CHAT_MODEL": os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
+    "OPENAI_CHAT_MODEL": os.getenv("OPENAI_CHAT_MODEL", "gpt-4.1-mini"),
     "GROQ_API_KEY": os.getenv("GROQ_API_KEY", ""),
     "GROQ_CHAT_MODEL": os.getenv("GROQ_CHAT_MODEL", "llama-3.3-70b-versatile"),
     "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", ""),
     "GEMINI_CHAT_MODEL": os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash"),
+}
+
+# Embeddings configuration (separate from chat LLM so you can mix providers)
+# Example: Use OpenAI gpt-4.1-mini for chat + text-embedding-3-large for vectors.
+EMBEDDINGS = {
+    "PROVIDER": os.getenv("EMBEDDINGS_PROVIDER", "ollama").lower(),
+    # OpenAI embedding settings
+    "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
+    "OPENAI_EMBED_MODEL": os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small"),
+    # Optional explicit dimension override (used for Pinecone). If 0 or unset,
+    # the code will probe the model at startup for OpenAI or use OLLAMA default.
+    "DIMENSION": int(os.getenv("EMBEDDINGS_DIMENSION", "0")),
 }
 
 LANGSMITH = {

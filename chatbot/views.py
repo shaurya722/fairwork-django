@@ -6,20 +6,23 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from awards import ingest
-from awards.models import AwardClause
-from services import rag, scraper, wages
+from awards.models import AwardClause, NDISDocument
+from services import llm as llm_service
+from services import ndis_rag, rag, scraper, wages
 
 from .models import ChatLog
 from .serializers import (
     ChatLogSerializer,
     ChatRequestSerializer,
+    NDISChatRequestSerializer,
     ScrapeRequestSerializer,
     SessionSummarySerializer,
+    ShiftCalcRequestSerializer,
 )
 
 # Conversation memory tuning.
-_HISTORY_TURNS = 6      # how many prior Q&A turns the chatbot remembers
-_HISTORY_CHARS = 700    # max characters kept from each remembered message
+_HISTORY_TURNS = 10     # how many prior Q&A turns the chatbot remembers
+_HISTORY_CHARS = 1500    # max characters kept from each remembered message
 
 
 def _recent_history(session_id):
@@ -43,10 +46,20 @@ def _recent_history(session_id):
 
 
 class ChatAPIView(APIView):
-    """POST a question, get a Fair Work award answer with clause citations.
+    """POST a question, get an intelligent answer from the unified chatbot.
+
+    This endpoint handles EVERYTHING:
+    - Fair Work award questions (with clause citations)
+    - NDIS pricing questions (support categories, price limits)
+    - SCHADS pay calculations (shifts, penalties, allowances)
+    - Public holidays, overtime, casual loading, etc.
+
+    The system automatically detects the question type and routes to:
+    - services.rag (Fair Work + SCHADS calculations)
+    - services.ndis_rag (NDIS pricing documents)
 
     Request:  {"message": "What are Sunday penalty rates?", "top_k": 5}
-    Response: {"answer": "...", "sources": [...], "meta": {...}}
+    Response: {"answer": "...", "sources": [...], "calculation": {...}, "meta": {...}}
 
     Every call is persisted to SQLite as a ChatLog row.
     """
@@ -56,17 +69,37 @@ class ChatAPIView(APIView):
         request_data.is_valid(raise_exception=True)
         data = request_data.validated_data
         session_id = data.get("session_id", "")
+        question = data["message"]
+        history = _recent_history(session_id)
 
-        result = rag.answer_question(
-            question=data["message"],
-            top_k=data.get("top_k"),
-            session_id=session_id,
-            history=_recent_history(session_id),
-        )
+        # Classify the question to route intelligently
+        from services import llm as llm_service
+        is_ndis = llm_service.classify_question(question)
+
+        if is_ndis:
+            # Route to NDIS RAG pipeline
+            result = ndis_rag.answer_question(
+                question=question,
+                top_k=data.get("top_k"),
+                session_id=session_id,
+                history=history,
+                year=None,  # use active document for latest year
+            )
+            # Prefix the stored question so we can identify NDIS conversations
+            stored_question = f"[NDIS] {result['question']}"
+        else:
+            # Route to Fair Work award + SCHADS calculation pipeline
+            result = rag.answer_question(
+                question=question,
+                top_k=data.get("top_k"),
+                session_id=session_id,
+                history=history,
+            )
+            stored_question = result["question"]
 
         # Persist the prompt request + response to SQLite.
         log = ChatLog.objects.create(
-            question=result["question"],
+            question=stored_question,
             session_id=result["session_id"],
             answer=result["answer"],
             sources=result["sources"],
@@ -89,6 +122,82 @@ class ChatAPIView(APIView):
                 "answer": result["answer"],
                 "sources": result["sources"],
                 "calculation": result.get("calculation"),
+                "ndis_document": result.get("ndis_document"),
+                "success": result["success"],
+                "error": result["error"],
+                "meta": {
+                    "chat_model": result["chat_model"],
+                    "embed_model": result["embed_model"],
+                    "top_k": result["top_k"],
+                    "matches_found": result["matches_found"],
+                    "retrieval_ms": result["retrieval_ms"],
+                    "llm_ms": result["llm_ms"],
+                    "total_ms": result["total_ms"],
+                    "route": "ndis" if is_ndis else "award",
+                },
+            },
+            status=200 if result["success"] else 502,
+        )
+
+
+class NDISChatAPIView(APIView):
+    """POST a question, get an NDIS Pricing Arrangements answer.
+
+    This endpoint is scoped to the NDIS pricing PDFs only — it never runs the
+    SCHADS pay-calculation path. Retrieval targets the active document for the
+    most recent year unless the request body includes ``"year"``.
+
+    Request:  {"message": "What is the price limit for daily activities?",
+               "session_id": "...", "top_k": 5, "year": "2024-25"}
+    Response: {"answer": "...", "sources": [...], "ndis_document": {...}, "meta": {...}}
+
+    Each call is persisted to ChatLog with a "[NDIS]" prefix on the question
+    so the regular history view still works, but the two corpora can be
+    separated when needed.
+    """
+
+    def post(self, request):
+        request_data = NDISChatRequestSerializer(data=request.data)
+        request_data.is_valid(raise_exception=True)
+        data = request_data.validated_data
+        session_id = data.get("session_id", "")
+        year = (data.get("year") or "").strip() or None
+
+        result = ndis_rag.answer_question(
+            question=data["message"],
+            top_k=data.get("top_k"),
+            session_id=session_id,
+            history=_recent_history(session_id),
+            year=year,
+        )
+
+        # Persist the prompt request + response to SQLite. The "[NDIS]" prefix
+        # on the stored question lets the existing history view filter / spot
+        # NDIS conversations without a schema change.
+        log = ChatLog.objects.create(
+            question=f"[NDIS] {result['question']}",
+            session_id=result["session_id"],
+            answer=result["answer"],
+            sources=result["sources"],
+            context_used=result["context_used"],
+            chat_model=result["chat_model"],
+            embed_model=result["embed_model"],
+            top_k=result["top_k"],
+            matches_found=result["matches_found"],
+            retrieval_ms=result["retrieval_ms"],
+            llm_ms=result["llm_ms"],
+            total_ms=result["total_ms"],
+            success=result["success"],
+            error=result["error"],
+        )
+
+        return Response(
+            {
+                "id": log.id,
+                "question": result["question"],
+                "answer": result["answer"],
+                "sources": result["sources"],
+                "ndis_document": result.get("ndis_document"),
                 "success": result["success"],
                 "error": result["error"],
                 "meta": {
@@ -102,6 +211,123 @@ class ChatAPIView(APIView):
                 },
             },
             status=200 if result["success"] else 502,
+        )
+
+
+class ShiftCalcAPIView(APIView):
+    """POST a Shift Lifecycle Payload, get a step-by-step calc + Pydantic JSON.
+
+    Runs the payload through the dedicated NDIS Backend Financial Reasoning
+    prompt (services.llm.SHIFT_CALC_SYSTEM_PROMPT). The LLM emits a markdown
+    reasoning block followed by a single JSON object matching the schema
+    documented on the endpoint. The response separates the two so the client
+    can render the reasoning AND consume the JSON without re-parsing.
+
+    Request body:
+        {
+          "shift_id": "string (uuid)",                    # optional
+          "employee_base_rate": 35.67,                     # optional, $/hr
+          "session_id": "string",                          # optional
+          "shift_lifecycle_payload": { ... full payload ... }
+        }
+
+    Response:
+        {
+          "shift_id": "...",
+          "reasoning_markdown": "### Calculation Steps ...",
+          "result": { ... Pydantic-shaped JSON ... },
+          "meta": { "chat_model": "...", "llm_ms": 0 }
+        }
+    """
+
+    def post(self, request):
+        import time
+
+        params = ShiftCalcRequestSerializer(data=request.data)
+        params.is_valid(raise_exception=True)
+        data = params.validated_data
+
+        payload = data["shift_lifecycle_payload"]
+        rate = data.get("employee_base_rate")
+        shift_id = data.get("shift_id") or payload.get("shift_id") or ""
+        session_id = data.get("session_id", "")
+
+        started = time.perf_counter()
+        try:
+            result = llm_service.generate_shift_calculation(
+                payload, employee_base_rate=rate
+            )
+        except llm_service.LLMError as exc:
+            return Response(
+                {"success": False, "error": str(exc)},
+                status=502,
+            )
+        llm_ms = int((time.perf_counter() - started) * 1000)
+
+        # Persist a compact ChatLog row so this call is auditable alongside
+        # the rest of the chat traffic.
+        parsed = result["result"]
+        log = ChatLog.objects.create(
+            question=f"[SHIFT_CALC] {shift_id or 'unnamed-shift'}",
+            session_id=session_id,
+            answer=result["raw"][:8000],
+            sources=[],
+            context_used="",
+            chat_model=getattr(settings, "LLM", {}).get("PROVIDER", "ollama"),
+            embed_model="",
+            top_k=0,
+            matches_found=0,
+            retrieval_ms=0,
+            llm_ms=llm_ms,
+            total_ms=llm_ms,
+            success=True,
+            error="",
+        )
+
+        return Response(
+            {
+                "id": log.id,
+                "shift_id": shift_id,
+                "reasoning_markdown": result["reasoning"],
+                "result": parsed,
+                "success": True,
+                "error": "",
+                "meta": {
+                    "chat_model": getattr(settings, "LLM", {}).get("PROVIDER", "ollama"),
+                    "llm_ms": llm_ms,
+                    "total_ms": llm_ms,
+                },
+            },
+            status=200,
+        )
+
+
+class NDISDocumentsView(APIView):
+    """GET the list of ingested NDIS pricing documents.
+
+    Lets the frontend show which years are available and which one is active.
+    """
+
+    def get(self, request):
+        docs = NDISDocument.objects.all().order_by("-year", "-version")
+        return Response(
+            {
+                "results": [
+                    {
+                        "id": doc.id,
+                        "year": doc.year,
+                        "version": doc.version,
+                        "title": doc.title,
+                        "source_file": doc.source_file,
+                        "is_active": doc.is_active,
+                        "page_count": doc.page_count,
+                        "chunk_count": doc.chunk_count,
+                        "namespace": doc.pinecone_namespace,
+                        "created_at": doc.created_at,
+                    }
+                    for doc in docs
+                ]
+            }
         )
 
 
@@ -123,6 +349,7 @@ class ChatSessionsView(APIView):
 
     Query params:
       ?page=1&limit=20
+      ?search=some text     # filters sessions where the preview (first question) contains the text (case-insensitive)
 
     Response shape:
       {
@@ -158,6 +385,9 @@ class ChatSessionsView(APIView):
         limit = min(limit, 100)  # hard cap
         offset = (page - 1) * limit
 
+        # Search param (filters on preview / first question)
+        search = (request.query_params.get("search") or "").strip()
+
         # First question per session (chronological) → preview (scalar string or None)
         first_q_subq = (
             ChatLog.objects.filter(session_id=OuterRef("session_id"))
@@ -166,14 +396,19 @@ class ChatSessionsView(APIView):
         )
 
         qs = (
-            ChatLog.objects.values("session_id")
+            ChatLog.objects.exclude(session_id="")
+            .values("session_id")
             .annotate(
                 message_count=Count("id"),
                 last_message_at=Max("created_at"),
                 preview=Subquery(first_q_subq),
             )
-            .order_by("-last_message_at")
         )
+
+        if search:
+            qs = qs.filter(preview__icontains=search)
+
+        qs = qs.order_by("-last_message_at")
 
         total = qs.count()
         paginated = qs[offset : offset + limit]
@@ -186,6 +421,19 @@ class ChatSessionsView(APIView):
             "limit": limit,
             "total_pages": (total + limit - 1) // limit if limit else 0,
         })
+
+
+class DeleteSessionView(APIView):
+    """DELETE a chat session and all its logs.
+
+    DELETE /api/chat/sessions/<session_id>/
+    """
+
+    def delete(self, request, session_id):
+        if not session_id:
+            return Response({"detail": "session_id required"}, status=400)
+        deleted, _ = ChatLog.objects.filter(session_id=session_id).delete()
+        return Response(status=204)
 
 
 class ScrapeAwardView(APIView):

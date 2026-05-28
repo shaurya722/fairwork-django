@@ -23,6 +23,41 @@ class ScrapeRequestSerializer(serializers.Serializer):
     fresh = serializers.BooleanField(required=False, default=False)
 
 
+class NDISChatRequestSerializer(serializers.Serializer):
+    """Validates an incoming /api/ndis-chat/ request body."""
+
+    message = serializers.CharField(max_length=2000, trim_whitespace=True)
+    session_id = serializers.CharField(
+        max_length=80, required=False, allow_blank=True, default=""
+    )
+    top_k = serializers.IntegerField(required=False, min_value=1, max_value=15)
+    # Optional year override (e.g. "2024-25"). Defaults to the active document
+    # for the latest year so the API always answers from the current pricing.
+    year = serializers.CharField(
+        max_length=20, required=False, allow_blank=True, default=""
+    )
+
+
+class ShiftCalcRequestSerializer(serializers.Serializer):
+    """Validates a /api/shift-calc/ request body.
+
+    The full Shift Lifecycle Payload schema is enforced by the LLM prompt
+    itself (see ``services.llm.SHIFT_CALC_SYSTEM_PROMPT``); here we just
+    accept the structured payload as a dict plus a handful of top-level
+    helpers (the worker's base rate, an optional shift id and session id).
+    """
+
+    shift_id = serializers.CharField(
+        max_length=80, required=False, allow_blank=True, default=""
+    )
+    employee_base_rate = serializers.FloatField(required=False)
+    session_id = serializers.CharField(
+        max_length=80, required=False, allow_blank=True, default=""
+    )
+    # Full Shift Lifecycle Payload dict — passed straight to the prompt.
+    shift_lifecycle_payload = serializers.JSONField()
+
+
 class ChatLogSerializer(serializers.ModelSerializer):
     """Serialises a stored chat request/response row."""
 

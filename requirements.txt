@@ -4,6 +4,7 @@ beautifulsoup4>=4.12
 lxml>=5.0
 requests>=2.31
 pinecone>=5.0
+pypdf>=4.0
 python-dotenv>=1.0
 langsmith>=0.1
 # Optional LLM providers (install only what you use)
